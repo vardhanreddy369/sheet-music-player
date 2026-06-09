@@ -120,9 +120,11 @@ async function audioToAbcPoly(audioBuffer) {
     () => {},
   );
 
-  // onsetThreshold, frameThreshold, minNoteLength(frames)
+  // onsetThreshold, frameThreshold, minNoteLength(frames). frame 0.4 + minLen
+  // 11 (vs the 0.3/5 defaults) suppress the spurious short "ringing" notes that
+  // reverberant real recordings produce, without dropping real sustained notes.
   const raw = bp.noteFramesToTime(
-    bp.addPitchBendsToNoteEvents(contours, bp.outputToNotesPoly(frames, onsets, 0.5, 0.3, 5)));
+    bp.addPitchBendsToNoteEvents(contours, bp.outputToNotesPoly(frames, onsets, 0.5, 0.4, 11)));
   const events = raw.map(n => ({
     start: n.startTimeSeconds, dur: n.durationSeconds, midi: n.pitchMidi,
   }));
