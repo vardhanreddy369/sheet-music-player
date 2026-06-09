@@ -20,5 +20,8 @@
   "homepage": "https://github.com/vardhanreddy369/sheet-music-player#readme",
   "dependencies": {
     "pitchy": "^4.1.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0"
   }
 }
