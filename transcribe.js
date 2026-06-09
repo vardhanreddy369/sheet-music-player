@@ -1,0 +1,171 @@
+// ============================================================
+//  transcribe.js  —  turn audio (mic or file) into sheet music
+//  Loads the melody, detects the pitch at each moment with pitchy,
+//  and writes ABC notation into the main text box.
+// ============================================================
+
+import { PitchDetector } from "https://esm.sh/pitchy@4";
+import { hzToMidi, framesToNotes, notesToAbc } from "./music-theory.js";
+
+const FRAME = 2048;   // samples analysed at once (~46ms at 44.1kHz)
+const HOP = 1024;     // step between windows (~23ms)
+
+// --- page elements ---
+const recordBtn   = document.getElementById("recordBtn");
+const uploadInput = document.getElementById("uploadInput");
+const statusEl    = document.getElementById("status");
+const canvas      = document.getElementById("wave");
+const notesBox    = document.getElementById("notes");
+
+let recording = false;
+let mediaRecorder, mediaStream, audioCtx, analyser, rafId, chunks = [];
+
+function setStatus(msg) { statusEl.textContent = msg; }
+
+// ---- Core: AudioBuffer -> ABC notation text ----
+async function audioToAbc(audioBuffer) {
+  const sr = audioBuffer.sampleRate;
+  const samples = audioBuffer.getChannelData(0);
+  const detector = PitchDetector.forFloat32Array(FRAME);
+  const window = new Float32Array(FRAME);
+  const frameMidis = [];
+
+  for (let i = 0; i + FRAME <= samples.length; i += HOP) {
+    window.set(samples.subarray(i, i + FRAME));
+
+    // loudness of this slice — quiet slices are silence/rests
+    let rms = 0;
+    for (let j = 0; j < FRAME; j++) rms += window[j] * window[j];
+    rms = Math.sqrt(rms / FRAME);
+
+    const [hz, clarity] = detector.findPitch(window, sr);
+
+    // only trust confident, in-range, loud-enough pitches
+    let midi = null;
+    if (clarity > 0.92 && rms > 0.012 && hz > 60 && hz < 2200) {
+      midi = hzToMidi(hz);
+    }
+    frameMidis.push(midi);
+  }
+
+  const hopTime = HOP / sr;
+  const notes = framesToNotes(frameMidis, hopTime, { minNoteSec: 0.09 });
+  return notesToAbc(notes, { bpm: 120 });
+}
+
+// ---- Decode any audio blob/file into samples ----
+async function decode(blob) {
+  const arrayBuffer = await blob.arrayBuffer();
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const buffer = await ctx.decodeAudioData(arrayBuffer);
+  ctx.close();
+  return buffer;
+}
+
+// ---- Run a buffer through transcription and show the result ----
+async function transcribeAndShow(buffer) {
+  setStatus("Listening to your melody…");
+  let abc;
+  try {
+    abc = await audioToAbc(buffer);
+  } catch (err) {
+    console.error(err);
+    setStatus("Something went wrong reading that audio. Try again?");
+    return;
+  }
+
+  if (!abc) {
+    setStatus("I couldn't hear clear notes — try humming a bit louder and steadier.");
+    return;
+  }
+
+  notesBox.value = abc;
+  notesBox.dispatchEvent(new Event("input")); // triggers the staff + sound
+  setStatus("Done! Here's what I heard — tweak the notes if you like ✨");
+}
+
+// ---- Live amber waveform while recording ----
+function drawWave() {
+  if (!analyser) return;
+  const ctx = canvas.getContext("2d");
+  const data = new Uint8Array(analyser.fftSize);
+  analyser.getByteTimeDomainData(data);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#f2b441";
+  ctx.shadowBlur = 12;
+  ctx.shadowColor = "rgba(242,180,65,0.7)";
+  ctx.beginPath();
+  const slice = canvas.width / data.length;
+  for (let i = 0; i < data.length; i++) {
+    const v = data[i] / 128 - 1;           // -1..1
+    const y = canvas.height / 2 + v * (canvas.height / 2 - 4);
+    const x = i * slice;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  rafId = requestAnimationFrame(drawWave);
+}
+
+// ---- Recording controls ----
+async function startRecording() {
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch {
+    setStatus("I need microphone permission to listen. Check your browser's prompt.");
+    return;
+  }
+
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const source = audioCtx.createMediaStreamSource(mediaStream);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 1024;
+  source.connect(analyser);
+  drawWave();
+
+  chunks = [];
+  mediaRecorder = new MediaRecorder(mediaStream);
+  mediaRecorder.ondataavailable = e => chunks.push(e.data);
+  mediaRecorder.onstop = async () => {
+    const blob = new Blob(chunks, { type: chunks[0]?.type || "audio/webm" });
+    const buffer = await decode(blob);
+    await transcribeAndShow(buffer);
+  };
+  mediaRecorder.start();
+
+  recording = true;
+  recordBtn.classList.add("recording");
+  recordBtn.querySelector(".rec-label").textContent = "Stop";
+  setStatus("Recording… hum or whistle a melody, then press Stop.");
+}
+
+function stopRecording() {
+  recording = false;
+  recordBtn.classList.remove("recording");
+  recordBtn.querySelector(".rec-label").textContent = "Record";
+  cancelAnimationFrame(rafId);
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+  if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+  if (audioCtx) audioCtx.close();
+  analyser = null;
+}
+
+// ---- Wire up ----
+recordBtn.addEventListener("click", () => recording ? stopRecording() : startRecording());
+
+uploadInput.addEventListener("change", async () => {
+  const file = uploadInput.files[0];
+  if (!file) return;
+  setStatus(`Reading “${file.name}”…`);
+  try {
+    const buffer = await decode(file);
+    await transcribeAndShow(buffer);
+  } catch {
+    setStatus("Couldn't read that file. Try an mp3, wav, or m4a.");
+  }
+  uploadInput.value = ""; // allow re-uploading the same file
+});

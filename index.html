@@ -3,84 +3,112 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Sheet Music Player</title>
+  <title>The Score — Sheet Music Studio</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,400&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
   <link rel="stylesheet" href="style.css" />
-  <!-- abcjs: one library that BOTH draws sheet music AND plays the sound -->
+
+  <!-- abcjs: draws the sheet music AND plays it -->
   <script src="https://cdn.jsdelivr.net/npm/abcjs@6.4.3/dist/abcjs-basic-min.js"></script>
 </head>
 <body>
-  <header>
-    <h1>🎵 My Sheet Music Player</h1>
-    <p class="tagline">Type music → see the notes → hear them on any instrument</p>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="glow" aria-hidden="true"></div>
+
+  <header class="masthead">
+    <p class="eyebrow">⟡ Midnight Conservatory ⟡</p>
+    <h1>The&nbsp;Score</h1>
+    <p class="tagline"><em>Hum it, write it, hear it —</em> on any instrument you please.</p>
   </header>
 
-  <main>
-    <!-- Controls row -->
-    <section class="controls">
-      <label>
-        Instrument
-        <select id="instrument">
-          <option value="0">🎹 Grand Piano</option>
-          <option value="46">🪕 Harp</option>
-          <option value="24">🎸 Acoustic Guitar</option>
-          <option value="40">🎻 Violin</option>
-          <option value="42">🎻 Cello</option>
-          <option value="73">🪈 Flute</option>
-          <option value="56">🎺 Trumpet</option>
-          <option value="71">🎶 Clarinet</option>
-          <option value="19">⛪ Organ</option>
-          <option value="10">🎁 Music Box</option>
-          <option value="12">🪵 Marimba</option>
-          <option value="52">🧑‍🎤 Choir</option>
-        </select>
-      </label>
+  <main class="desk">
 
-      <label>
-        Tempo <span id="tempoValue">120</span>
-        <input type="range" id="tempo" min="40" max="200" value="120" />
-      </label>
+    <!-- ░░ CAPTURE: turn audio into notes ░░ -->
+    <section class="panel capture">
+      <div class="panel-tag">I. Sing it in</div>
+      <div class="capture-row">
+        <button id="recordBtn" class="record" type="button" aria-label="Record">
+          <span class="rec-dot"></span>
+          <span class="rec-label">Record</span>
+        </button>
+        <canvas id="wave" class="wave" width="640" height="72" aria-hidden="true"></canvas>
+        <label class="upload">
+          <input type="file" id="uploadInput" accept="audio/*" hidden />
+          <span>⤓ Upload audio</span>
+        </label>
+      </div>
+      <p id="status" class="status">Hum, whistle, or play a melody — I'll write the notes for you.</p>
     </section>
 
-    <!-- Notation input -->
-    <section class="editor">
-      <label for="notes">Type your music here:</label>
-      <textarea id="notes" spellcheck="false" rows="4">C C G G | A A G2 | F F E E | D D C2 |</textarea>
+    <!-- ░░ COMPOSE: edit notation + instrument ░░ -->
+    <section class="panel compose">
+      <div class="panel-tag">II. Shape it</div>
+
+      <div class="controls">
+        <label class="field">
+          <span>Instrument</span>
+          <select id="instrument">
+            <option value="0">Grand Piano</option>
+            <option value="46">Harp</option>
+            <option value="24">Acoustic Guitar</option>
+            <option value="40">Violin</option>
+            <option value="42">Cello</option>
+            <option value="73">Flute</option>
+            <option value="56">Trumpet</option>
+            <option value="71">Clarinet</option>
+            <option value="19">Pipe Organ</option>
+            <option value="10">Music Box</option>
+            <option value="12">Marimba</option>
+            <option value="52">Choir</option>
+          </select>
+        </label>
+
+        <label class="field tempo-field">
+          <span>Tempo · <b id="tempoValue">120</b> bpm</span>
+          <input type="range" id="tempo" min="40" max="200" value="120" />
+        </label>
+      </div>
+
+      <textarea id="notes" spellcheck="false" rows="3">C C G G | A A G2 | F F E E | D D C2 |</textarea>
       <p id="warning" class="warning" hidden></p>
+
+      <div class="examples">
+        <span class="examples-label">Or try:</span>
+        <button class="ex" data-song="twinkle" type="button">Twinkle Twinkle</button>
+        <button class="ex" data-song="scale" type="button">C Major Scale</button>
+        <button class="ex" data-song="ode" type="button">Ode to Joy</button>
+        <button id="clear" class="ex clear" type="button">Clear</button>
+      </div>
     </section>
 
-    <!-- Example song buttons -->
-    <section class="examples">
-      <span>Try one:</span>
-      <button class="ex" data-song="twinkle">Twinkle Twinkle</button>
-      <button class="ex" data-song="scale">C Major Scale</button>
-      <button class="ex" data-song="ode">Ode to Joy</button>
-      <button id="clear" class="ex clear">Clear</button>
+    <!-- ░░ THE SHEET: hero ░░ -->
+    <section class="sheet-wrap">
+      <div class="panel-tag floating">III. Hear it</div>
+      <div id="paper" class="paper" aria-label="Sheet music"></div>
+      <div id="audio" class="audio"></div>
     </section>
 
-    <!-- abcjs draws the sheet music here -->
-    <section id="paper" class="paper" aria-label="Sheet music"></section>
-
-    <!-- abcjs puts the Play button + progress bar here -->
-    <section id="audio" class="audio"></section>
-
-    <!-- Cheat sheet -->
     <details class="guide">
-      <summary>📖 Quick guide — how to write notes</summary>
+      <summary>How to write notes by hand</summary>
       <ul>
-        <li><b>Letters are notes:</b> <code>C D E F G A B</code> (uppercase = lower octave, lowercase <code>c d e</code> = higher).</li>
-        <li><b>Longer note:</b> add a number — <code>C2</code> is twice as long, <code>C4</code> a whole note.</li>
-        <li><b>Bar line:</b> use <code>|</code> to split into measures (just for tidiness).</li>
+        <li><b>Letters are notes:</b> <code>C D E F G A B</code> — uppercase is the lower octave, lowercase <code>c d e</code> the higher.</li>
+        <li><b>Longer note:</b> add a number — <code>C2</code> lasts twice as long, <code>C4</code> is a whole note. Half-length is <code>C/2</code>.</li>
+        <li><b>Bar line:</b> <code>|</code> tidies the music into measures.</li>
         <li><b>Rest (silence):</b> the letter <code>z</code>.</li>
         <li><b>Sharp / flat:</b> <code>^C</code> is C-sharp, <code>_B</code> is B-flat.</li>
-        <li><b>Higher / lower octave:</b> <code>c'</code> goes up, <code>C,</code> goes down.</li>
+        <li><b>Up / down an octave:</b> <code>c'</code> climbs, <code>C,</code> drops.</li>
       </ul>
     </details>
   </main>
 
   <footer>
-    <p>Made with ❤️ — powered by <a href="https://abcjs.net" target="_blank" rel="noopener">abcjs</a></p>
+    <span>Made with care · powered by <a href="https://abcjs.net" target="_blank" rel="noopener">abcjs</a> &amp; <a href="https://github.com/ianprime0509/pitchy" target="_blank" rel="noopener">pitchy</a></span>
   </footer>
 
   <script src="app.js"></script>
+  <script type="module" src="transcribe.js"></script>
 </body>
 </html>
