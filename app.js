@@ -22,6 +22,10 @@ const SONGS = {
   scale:   "C D E F | G A B c | c B A G | F E D C |",
   ode:     "E E F G | G F E D | C C D E | E D D2 |\n" +
            "E E F G | G F E D | C C D E | D C C2 |",
+  // A flowing broken-chord lullaby — rolls up and down like a real harp.
+  harp:    "C E G c | e c G E | F A c f | a f c A |\n" +
+           "G B d g | b g d B | A, C E A | G, B, D G |\n" +
+           "C E G c | e g c' e' | c2 G2 | C4 |",
 };
 
 // The audio player (created once, reused).
@@ -119,10 +123,11 @@ tempo.addEventListener("input", () => {
   typingTimer = setTimeout(update, 200);
 });
 
-// Example song buttons.
+// Example song buttons. Some also switch the instrument (e.g. the harp sample).
 document.querySelectorAll("button.ex[data-song]").forEach(btn => {
   btn.addEventListener("click", () => {
     notesBox.value = SONGS[btn.dataset.song];
+    if (btn.dataset.instrument) instrument.value = btn.dataset.instrument;
     update();
   });
 });

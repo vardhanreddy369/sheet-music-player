@@ -52,6 +52,22 @@ await page.locator('button[data-song="ode"]').click();
 await page.waitForTimeout(800);
 ok("example button updates notation", (await page.locator("#notes").inputValue()).includes("E"));
 
+// 4b) the notes are actually VISIBLE (dark ink, not faint cream on cream)
+const fill = await page.locator("#paper svg path").first().evaluate(
+  el => getComputedStyle(el).fill);
+const [r, g, b] = (fill.match(/\d+/g) || [255, 255, 255]).map(Number);
+ok(`notes are dark/visible (fill ${fill})`, r < 90 && g < 90 && b < 90);
+
+// 4c) the Harp Lullaby sample loads its tune AND switches instrument to Harp
+await page.locator('button[data-song="harp"]').click();
+await page.waitForTimeout(900);
+ok("harp sample sets instrument to Harp (46)",
+   (await page.locator("#instrument").inputValue()) === "46");
+ok("harp sample loaded its arpeggio notes",
+   (await page.locator("#notes").inputValue()).includes("C E G c"));
+ok("harp notation is valid (no warning shown)",
+   await page.locator("#warning").isHidden());
+
 // 5) UPLOAD path: feed a real WAV of C-E-G-c and assert the exact notes come out.
 //    This exercises decodeAudioData -> pitchy -> ABC in the real browser.
 await page.locator("#uploadInput").setInputFiles("melody-CEGc.wav");

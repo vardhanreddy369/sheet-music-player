@@ -236,8 +236,14 @@ textarea:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px
   background: linear-gradient(90deg, transparent, rgba(176,122,46,0.4), transparent);
 }
 
+/* abcjs draws notes/staff/text in the inherited text colour — force a dark
+   ink so the music is clearly visible on the cream paper (not faint cream). */
+.paper { color: #221a10; }
+.paper svg path,
+.paper svg text { fill: #221a10; stroke: none; }
+
 /* the note currently sounding glows like a warm bulb */
-.abcjs-highlight { fill: var(--amber) !important; filter: drop-shadow(0 0 4px rgba(242,180,65,0.8)); }
+.abcjs-highlight { fill: var(--amber) !important; filter: drop-shadow(0 0 4px rgba(242,180,65,0.85)); }
 
 .audio { margin-top: 18px; }
 .abcjs-inline-audio {
