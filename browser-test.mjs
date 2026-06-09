@@ -79,6 +79,39 @@ const transcribed = await page.locator("#notes").inputValue();
 const letters = transcribed.replace(/[0-9/|,'^_\s]/g, "");
 ok(`uploaded audio transcribed to notes (got "${transcribed.trim()}")`, letters === "CEGc");
 
+// 4d) MUSICIAN FEATURES — key, time signature, transpose, chords.
+// reset to a single clean note for a clear transpose measurement
+await page.fill("#notes", "C");
+await page.waitForTimeout(500);
+const noteY = async () => {
+  const box = await page.locator("#paper svg .abcjs-note").first().boundingBox();
+  return box ? box.y : null;
+};
+const yBefore = await noteY();
+// transpose up a full octave (12 semitones) -> the note must move UP (smaller y)
+for (let i = 0; i < 12; i++) await page.locator("#transposeUp").click();
+await page.waitForTimeout(500);
+const yAfter = await noteY();
+ok(`transpose +12 shows "+12"`, (await page.locator("#transposeValue").innerText()) === "+12");
+ok(`transposing up moves the note higher on the staff (${yBefore?.toFixed(0)} -> ${yAfter?.toFixed(0)})`,
+   yBefore !== null && yAfter !== null && yAfter < yBefore);
+await page.locator("#transposeReset").click();
+
+// key + time signature apply without breaking the render
+await page.selectOption("#key", "G");
+await page.selectOption("#meter", "3/4");
+await page.waitForTimeout(500);
+ok("key + time signature change still renders", await page.locator("#paper svg").count() > 0);
+await page.selectOption("#key", "C");
+await page.selectOption("#meter", "4/4");
+
+// chords example loads stacked-note syntax and renders
+await page.locator('button[data-song="chords"]').click();
+await page.waitForTimeout(700);
+ok("chords example loads [CEG] syntax",
+   (await page.locator("#notes").inputValue()).includes("[CEG]"));
+ok("chords render on the staff", await page.locator("#paper svg .abcjs-note").count() > 0);
+
 // 5a) INSTRUMENTS ARE DISTINCT — the "everything sounds like piano" bug.
 //     Select each instrument, press the real Play button, and confirm the
 //     correct soundfont folder loads (not piano for all).

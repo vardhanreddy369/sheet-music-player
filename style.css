@@ -180,6 +180,17 @@ body {
 }
 .field > span b { color: var(--gold); font-weight: 700; }
 
+/* transpose stepper */
+.transpose-buttons { display: flex; gap: 6px; }
+.transpose-buttons button {
+  flex: 1; padding: 11px 0; border-radius: 10px;
+  border: 1px solid var(--ink-3); background: #130d08;
+  color: var(--gold-hi); font-family: inherit; font-size: 0.95rem; cursor: pointer;
+  transition: background .15s, border-color .15s, transform .07s;
+}
+.transpose-buttons button:hover { background: #221810; border-color: var(--gold); }
+.transpose-buttons button:active { transform: scale(0.95); }
+
 select {
   appearance: none; -webkit-appearance: none;
   padding: 12px 14px; border-radius: 11px;

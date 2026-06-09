@@ -68,10 +68,47 @@
           </select>
         </label>
 
+        <label class="field">
+          <span>Key</span>
+          <select id="key">
+            <option value="C">C major</option>
+            <option value="G">G major (1♯)</option>
+            <option value="D">D major (2♯)</option>
+            <option value="A">A major (3♯)</option>
+            <option value="E">E major (4♯)</option>
+            <option value="F">F major (1♭)</option>
+            <option value="Bb">B♭ major (2♭)</option>
+            <option value="Eb">E♭ major (3♭)</option>
+            <option value="Am">A minor</option>
+            <option value="Em">E minor</option>
+            <option value="Dm">D minor</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Time</span>
+          <select id="meter">
+            <option value="4/4">4/4 (common)</option>
+            <option value="3/4">3/4 (waltz)</option>
+            <option value="2/4">2/4 (march)</option>
+            <option value="6/8">6/8 (jig)</option>
+            <option value="C|">cut time</option>
+          </select>
+        </label>
+
         <label class="field tempo-field">
           <span>Tempo · <b id="tempoValue">120</b> bpm</span>
           <input type="range" id="tempo" min="40" max="200" value="120" />
         </label>
+
+        <div class="field transpose-field">
+          <span>Transpose · <b id="transposeValue">0</b></span>
+          <div class="transpose-buttons">
+            <button id="transposeDown" type="button" title="Down a semitone">♭ −</button>
+            <button id="transposeReset" type="button" title="Back to concert pitch">0</button>
+            <button id="transposeUp" type="button" title="Up a semitone">♯ +</button>
+          </div>
+        </div>
       </div>
 
       <textarea id="notes" spellcheck="false" rows="3">C C G G | A A G2 | F F E E | D D C2 |</textarea>
@@ -83,6 +120,7 @@
         <button class="ex" data-song="scale" type="button">C Major Scale</button>
         <button class="ex" data-song="ode" type="button">Ode to Joy</button>
         <button class="ex harp-ex" data-song="harp" data-instrument="46" type="button">♪ Harp Lullaby</button>
+        <button class="ex" data-song="chords" type="button">Chords</button>
         <button id="clear" class="ex clear" type="button">Clear</button>
       </div>
     </section>
@@ -103,6 +141,9 @@
         <li><b>Rest (silence):</b> the letter <code>z</code>.</li>
         <li><b>Sharp / flat:</b> <code>^C</code> is C-sharp, <code>_B</code> is B-flat.</li>
         <li><b>Up / down an octave:</b> <code>c'</code> climbs, <code>C,</code> drops.</li>
+        <li><b>Chord (notes together):</b> <code>[CEG]</code> plays a C major chord.</li>
+        <li><b>Tie / slur:</b> <code>C-C</code> ties; <code>(CDE)</code> slurs a phrase.</li>
+        <li><b>Pick a Key</b> so you don't type sharps on every note, and a <b>Time</b> signature for waltz (3/4) or jig (6/8). <b>Transpose</b> shifts the whole piece up or down to fit a voice or instrument.</li>
       </ul>
     </details>
   </main>

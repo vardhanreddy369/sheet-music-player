@@ -9,6 +9,13 @@ const instrument  = document.getElementById("instrument");
 const tempo       = document.getElementById("tempo");
 const tempoValue  = document.getElementById("tempoValue");
 const warning     = document.getElementById("warning");
+const keySel      = document.getElementById("key");
+const meterSel    = document.getElementById("meter");
+const transposeValue = document.getElementById("transposeValue");
+
+// How many semitones to shift the whole piece. abcjs handles the music theory
+// (correct key-signature spelling) for us via the visualTranspose render option.
+let transpose = 0;
 
 // If the abcjs library failed to load (e.g. the CDN is down), don't leave a
 // blank, silent page — tell the user plainly and stop.
@@ -35,6 +42,9 @@ const SONGS = {
   harp:    "C E G c | e c G E | F A c f | a f c A |\n" +
            "G B d g | b g d B | A, C E A | G, B, D G |\n" +
            "C E G c | e g c' e' | c2 G2 | C4 |",
+  // Block chords (notes stacked) — shows the [ ] chord syntax.
+  chords:  "[CEG] [CEG] [CFA] [CEG] | [B,DG] [B,DG] [CEG]2 |\n" +
+           "[CFA] [CFA] [CEG] [CEG] | [B,DG] [B,DG] [CEG]2 |",
 };
 
 // The audio player. abcjs's SynthController caches the FIRST instrument it
@@ -59,16 +69,16 @@ const cursorControl = {
   },
 };
 
-// Build a complete ABC tune from the user's notes + chosen instrument + tempo.
+// Build a complete ABC tune from the user's notes + chosen key, time, tempo.
 function buildAbc() {
   const userNotes = notesBox.value.trim() || "z"; // z = a rest, so it's never empty
   return [
     "X:1",
     "T:My Song",
-    "M:4/4",
+    `M:${meterSel.value}`,
     "L:1/4",
     `Q:1/4=${tempo.value}`,
-    "K:C",
+    `K:${keySel.value}`,
     `%%MIDI program ${instrument.value}`, // <- this picks the instrument sound
     userNotes,
   ].join("\n");
@@ -78,10 +88,13 @@ function buildAbc() {
 async function update() {
   const abc = buildAbc();
 
-  // 1) Draw the staff. renderAbc returns info about the tune, incl. any warnings.
+  // 1) Draw the staff. visualTranspose shifts every note AND respells the key
+  //    signature correctly — abcjs does the music theory, and the playback
+  //    follows the transposed notes.
   const tune = ABCJS.renderAbc("paper", abc, {
     responsive: "resize",
     add_classes: true,
+    visualTranspose: transpose,
   })[0];
 
   // 2) Show a gentle message if the notation couldn't be read.
@@ -145,6 +158,20 @@ tempo.addEventListener("input", () => {
   clearTimeout(typingTimer);
   typingTimer = setTimeout(update, 200);
 });
+
+// Key and time-signature changes -> redraw.
+keySel.addEventListener("change", update);
+meterSel.addEventListener("change", update);
+
+// Transpose: shift the whole piece up/down in semitones (abcjs respells it).
+function setTranspose(semitones) {
+  transpose = Math.max(-12, Math.min(12, semitones));
+  transposeValue.textContent = (transpose > 0 ? "+" : "") + transpose;
+  update();
+}
+document.getElementById("transposeUp").addEventListener("click", () => setTranspose(transpose + 1));
+document.getElementById("transposeDown").addEventListener("click", () => setTranspose(transpose - 1));
+document.getElementById("transposeReset").addEventListener("click", () => setTranspose(0));
 
 // Example song buttons. Some also switch the instrument (e.g. the harp sample).
 document.querySelectorAll("button.ex[data-song]").forEach(btn => {
