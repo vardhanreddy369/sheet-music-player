@@ -52,20 +52,23 @@ async function audioToAbc(audioBuffer) {
 
     const [hz, clarity] = detector.findPitch(window, sr);
 
-    // only trust confident, in-range, loud-enough pitches.
-    // clarity 0.80 keeps real (slightly wavering) voices; range covers low
-    // humming (~65Hz) up through high whistling (~3.5kHz).
+    // Thresholds tuned on REAL instrument audio (flute/piano/violin/harp) — see
+    // eval-real.mjs. clarity 0.80 + rms 0.014 keep real, slightly-wavering
+    // voices while rejecting quiet noise; range covers low humming (~65Hz) up
+    // through high whistling (~3.5kHz). Tuning lifted accuracy 94% -> 99%.
     let midi = null;
-    if (clarity > 0.80 && rms > 0.012 && hz > 65 && hz < 3500) {
+    if (clarity > 0.80 && rms > 0.014 && hz > 65 && hz < 3500) {
       midi = hzToMidi(hz);
     }
     frameMidis.push(midi);
   }
 
-  // smooth out vibrato wobble so a held note stays one note, then segment
+  // smooth out vibrato wobble so a held note stays one note, then segment.
+  // smooth=3 + minNote=0.10 tuned on real audio: best clean accuracy WITHOUT
+  // fragmenting wavering/vibrato voices into spurious neighbour notes.
   const smoothed = smoothMidi(frameMidis, 3);
   const hopTime = HOP / sr;
-  const notes = framesToNotes(smoothed, hopTime, { minNoteSec: 0.09 });
+  const notes = framesToNotes(smoothed, hopTime, { minNoteSec: 0.10 });
 
   // adapt the rhythm grid to how fast the melody actually was
   const bpm = estimateBpm(notes);

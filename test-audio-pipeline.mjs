@@ -43,10 +43,10 @@ function samplesToAbc(samples) {
     rms = Math.sqrt(rms / FRAME);
     const [hz, clarity] = detector.findPitch(win, SR);
     let midi = null;
-    if (clarity > 0.80 && rms > 0.012 && hz > 65 && hz < 3500) midi = hzToMidi(hz);
+    if (clarity > 0.80 && rms > 0.014 && hz > 65 && hz < 3500) midi = hzToMidi(hz);
     frameMidis.push(midi);
   }
-  const notes = framesToNotes(smoothMidi(frameMidis, 3), HOP / SR, { minNoteSec: 0.09 });
+  const notes = framesToNotes(smoothMidi(frameMidis, 3), HOP / SR, { minNoteSec: 0.10 });
   return notesToAbc(notes, { bpm: estimateBpm(notes) });
 }
 
