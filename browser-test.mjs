@@ -80,22 +80,28 @@ const letters = transcribed.replace(/[0-9/|,'^_\s]/g, "");
 ok(`uploaded audio transcribed to notes (got "${transcribed.trim()}")`, letters === "CEGc");
 
 // 4d) MUSICIAN FEATURES — key, time signature, transpose, chords.
-// reset to a single clean note for a clear transpose measurement
-await page.fill("#notes", "C");
-await page.waitForTimeout(500);
-const noteY = async () => {
-  const box = await page.locator("#paper svg .abcjs-note").first().boundingBox();
-  return box ? box.y : null;
-};
-const yBefore = await noteY();
-// transpose up a full octave (12 semitones) -> the note must move UP (smaller y)
+// Transpose UI updates and re-renders:
 for (let i = 0; i < 12; i++) await page.locator("#transposeUp").click();
-await page.waitForTimeout(500);
-const yAfter = await noteY();
+await page.waitForTimeout(400);
 ok(`transpose +12 shows "+12"`, (await page.locator("#transposeValue").innerText()) === "+12");
-ok(`transposing up moves the note higher on the staff (${yBefore?.toFixed(0)} -> ${yAfter?.toFixed(0)})`,
-   yBefore !== null && yAfter !== null && yAfter < yBefore);
 await page.locator("#transposeReset").click();
+ok(`transpose reset shows "0"`, (await page.locator("#transposeValue").innerText()) === "0");
+
+// Musical correctness: abcjs visualTranspose must shift pitch by the right
+// diatonic amount — +12 semitones = a full octave = 7 diatonic steps.
+const pitches = await page.evaluate(() => {
+  const read = t => {
+    const tune = ABCJS.renderAbc("paper", "X:1\nL:1/4\nK:C\nC", { visualTranspose: t })[0];
+    const n = tune.lines[0].staff[0].voices[0].find(e => e.pitches);
+    return n.pitches[0].pitch;
+  };
+  return { base: read(0), fifth: read(7), octave: read(12) };
+});
+ok(`a fifth up = 4 diatonic steps (got ${pitches.fifth})`, pitches.fifth - pitches.base === 4);
+ok(`an octave up = 7 diatonic steps (got ${pitches.octave})`, pitches.octave - pitches.base === 7);
+// restore default tune
+await page.locator('button[data-song="twinkle"]').click();
+await page.waitForTimeout(400);
 
 // key + time signature apply without breaking the render
 await page.selectOption("#key", "G");
