@@ -45,6 +45,12 @@ const SONGS = {
   // Block chords (notes stacked) — shows the [ ] chord syntax.
   chords:  "[CEG] [CEG] [CFA] [CEG] | [B,DG] [B,DG] [CEG]2 |\n" +
            "[CFA] [CFA] [CEG] [CEG] | [B,DG] [B,DG] [CEG]2 |",
+  // Beethoven — Für Elise (A section). A minor, 3/4. The famous E–D# oscillation,
+  // octave-spanning runs, and the G#/D# accidentals make this a real stress test.
+  elise:   "e/2 ^d/2 e/2 ^d/2 e/2 B/2 | d/2 c/2 A z/2 z/2 |\n" +
+           "A,/2 C/2 E/2 A z/2 | B,/2 E/2 ^G/2 B z/2 |\n" +
+           "e/2 ^d/2 e/2 ^d/2 e/2 B/2 | d/2 c/2 A z/2 z/2 |\n" +
+           "A,/2 C/2 E/2 A z/2 | B,/2 E/2 c/2 B z/2 | A3 |",
 };
 
 // The audio player. abcjs's SynthController caches the FIRST instrument it
@@ -173,11 +179,17 @@ document.getElementById("transposeUp").addEventListener("click", () => setTransp
 document.getElementById("transposeDown").addEventListener("click", () => setTranspose(transpose - 1));
 document.getElementById("transposeReset").addEventListener("click", () => setTranspose(0));
 
-// Example song buttons. Some also switch the instrument (e.g. the harp sample).
+// Example song buttons. An example can also carry its own musical setup —
+// instrument, key, time signature, tempo — so a piece like Für Elise loads in
+// A minor / 3-4 at the right speed, not stuck on the default C major / 4-4.
 document.querySelectorAll("button.ex[data-song]").forEach(btn => {
   btn.addEventListener("click", () => {
     notesBox.value = SONGS[btn.dataset.song];
     if (btn.dataset.instrument) instrument.value = btn.dataset.instrument;
+    if (btn.dataset.key)    keySel.value = btn.dataset.key;
+    if (btn.dataset.meter)  meterSel.value = btn.dataset.meter;
+    if (btn.dataset.tempo)  { tempo.value = btn.dataset.tempo; tempoValue.textContent = btn.dataset.tempo; }
+    transpose = 0; transposeValue.textContent = "0";   // start each piece at concert pitch
     update();
   });
 });

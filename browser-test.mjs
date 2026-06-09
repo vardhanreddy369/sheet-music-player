@@ -118,6 +118,19 @@ ok("chords example loads [CEG] syntax",
    (await page.locator("#notes").inputValue()).includes("[CEG]"));
 ok("chords render on the staff", await page.locator("#paper svg .abcjs-note").count() > 0);
 
+// Für Elise: a complex piece that loads its OWN key/time/tempo and renders cleanly
+await page.locator('button[data-song="elise"]').click();
+await page.waitForTimeout(800);
+ok("Für Elise sets key to A minor", (await page.locator("#key").inputValue()) === "Am");
+ok("Für Elise sets time to 3/4", (await page.locator("#meter").inputValue()) === "3/4");
+ok("Für Elise sets a brisk tempo (140)", (await page.locator("#tempo").inputValue()) === "140");
+ok("Für Elise notation is valid (no warning)", await page.locator("#warning").isHidden());
+ok("Für Elise renders many notes", await page.locator("#paper svg .abcjs-note").count() >= 20);
+// reset
+await page.selectOption("#key", "C"); await page.selectOption("#meter", "4/4");
+await page.locator('button[data-song="twinkle"]').click();
+await page.waitForTimeout(300);
+
 // 5a) INSTRUMENTS ARE DISTINCT — the "everything sounds like piano" bug.
 //     Select each instrument, press the real Play button, and confirm the
 //     correct soundfont folder loads (not piano for all).
