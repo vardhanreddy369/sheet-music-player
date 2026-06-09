@@ -129,7 +129,7 @@ ok("Für Elise renders many notes", await page.locator("#paper svg .abcjs-note")
 // Cooley's: canonical version must show its title + guitar chord symbols
 await page.locator('button[data-song="cooley"]').click();
 await page.waitForTimeout(800);
-ok("Cooley's shows its title", (await page.locator("#paper .abcjs-title").innerText()).includes("Cooley"));
+ok("Cooley's shows its title", (await page.locator("#paper .abcjs-title").textContent()).includes("Cooley"));
 ok("Cooley's shows guitar chord symbols (Em/D)",
    await page.locator("#paper .abcjs-chord").count() >= 4);
 
