@@ -41,6 +41,12 @@ ok(`notes drawn on the staff (found ${noteCount})`, noteCount > 0);
 await page.waitForSelector("#audio .abcjs-inline-audio", { timeout: 15000 }).catch(() => {});
 ok("audio play-bar rendered", await page.locator("#audio .abcjs-inline-audio").count() > 0);
 
+// the abcjs audio CSS must be loaded, or the player shows a "CSS required" warning
+const audioText = await page.locator("#audio").innerText();
+ok("audio CSS loaded (no 'CSS required' warning)", !/CSS required/i.test(audioText));
+// real Play button present (it has a play-control element when CSS is loaded)
+ok("Play button present", await page.locator("#audio .abcjs-midi-start, #audio button").count() > 0);
+
 // 4) clicking an example re-renders the staff
 await page.locator('button[data-song="ode"]').click();
 await page.waitForTimeout(800);
