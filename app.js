@@ -37,8 +37,11 @@ const SONGS = {
            "C E G c | e g c' e' | c2 G2 | C4 |",
 };
 
-// The audio player (created once, reused).
+// The audio player. abcjs's SynthController caches the FIRST instrument it
+// loads and ignores later program changes, so we rebuild it whenever the
+// instrument actually changes (tracked by loadedProgram).
 let synthControl;
+let loadedProgram = null;
 
 // Highlights the note that is currently sounding, like a karaoke ball.
 const cursorControl = {
@@ -97,13 +100,17 @@ async function update() {
     return;
   }
 
-  if (!synthControl) {
+  // Rebuild the player when the instrument changes (abcjs caches the first
+  // one otherwise — which made every instrument sound like piano).
+  const program = instrument.value;
+  if (!synthControl || program !== loadedProgram) {
     synthControl = new ABCJS.synth.SynthController();
     synthControl.load("#audio", cursorControl, {
       displayPlay: true,
       displayProgress: true,
       displayRestart: true,
     });
+    loadedProgram = program;
   }
 
   try {
