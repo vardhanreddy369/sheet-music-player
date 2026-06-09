@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Sheet Music Player</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- abcjs: one library that BOTH draws sheet music AND plays the sound -->
+  <script src="https://cdn.jsdelivr.net/npm/abcjs@6.4.3/dist/abcjs-basic-min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>🎵 My Sheet Music Player</h1>
+    <p class="tagline">Type music → see the notes → hear them on any instrument</p>
+  </header>
+
+  <main>
+    <!-- Controls row -->
+    <section class="controls">
+      <label>
+        Instrument
+        <select id="instrument">
+          <option value="0">🎹 Grand Piano</option>
+          <option value="46">🪕 Harp</option>
+          <option value="24">🎸 Acoustic Guitar</option>
+          <option value="40">🎻 Violin</option>
+          <option value="42">🎻 Cello</option>
+          <option value="73">🪈 Flute</option>
+          <option value="56">🎺 Trumpet</option>
+          <option value="71">🎶 Clarinet</option>
+          <option value="19">⛪ Organ</option>
+          <option value="10">🎁 Music Box</option>
+          <option value="12">🪵 Marimba</option>
+          <option value="52">🧑‍🎤 Choir</option>
+        </select>
+      </label>
+
+      <label>
+        Tempo <span id="tempoValue">120</span>
+        <input type="range" id="tempo" min="40" max="200" value="120" />
+      </label>
+    </section>
+
+    <!-- Notation input -->
+    <section class="editor">
+      <label for="notes">Type your music here:</label>
+      <textarea id="notes" spellcheck="false" rows="4">C C G G | A A G2 | F F E E | D D C2 |</textarea>
+      <p id="warning" class="warning" hidden></p>
+    </section>
+
+    <!-- Example song buttons -->
+    <section class="examples">
+      <span>Try one:</span>
+      <button class="ex" data-song="twinkle">Twinkle Twinkle</button>
+      <button class="ex" data-song="scale">C Major Scale</button>
+      <button class="ex" data-song="ode">Ode to Joy</button>
+      <button id="clear" class="ex clear">Clear</button>
+    </section>
+
+    <!-- abcjs draws the sheet music here -->
+    <section id="paper" class="paper" aria-label="Sheet music"></section>
+
+    <!-- abcjs puts the Play button + progress bar here -->
+    <section id="audio" class="audio"></section>
+
+    <!-- Cheat sheet -->
+    <details class="guide">
+      <summary>📖 Quick guide — how to write notes</summary>
+      <ul>
+        <li><b>Letters are notes:</b> <code>C D E F G A B</code> (uppercase = lower octave, lowercase <code>c d e</code> = higher).</li>
+        <li><b>Longer note:</b> add a number — <code>C2</code> is twice as long, <code>C4</code> a whole note.</li>
+        <li><b>Bar line:</b> use <code>|</code> to split into measures (just for tidiness).</li>
+        <li><b>Rest (silence):</b> the letter <code>z</code>.</li>
+        <li><b>Sharp / flat:</b> <code>^C</code> is C-sharp, <code>_B</code> is B-flat.</li>
+        <li><b>Higher / lower octave:</b> <code>c'</code> goes up, <code>C,</code> goes down.</li>
+      </ul>
+    </details>
+  </main>
+
+  <footer>
+    <p>Made with ❤️ — powered by <a href="https://abcjs.net" target="_blank" rel="noopener">abcjs</a></p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
