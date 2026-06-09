@@ -126,9 +126,16 @@ ok("Für Elise sets time to 3/4", (await page.locator("#meter").inputValue()) ==
 ok("Für Elise sets a brisk tempo (140)", (await page.locator("#tempo").inputValue()) === "140");
 ok("Für Elise notation is valid (no warning)", await page.locator("#warning").isHidden());
 ok("Für Elise renders many notes", await page.locator("#paper svg .abcjs-note").count() >= 20);
+// Cooley's: canonical version must show its title + guitar chord symbols
+await page.locator('button[data-song="cooley"]').click();
+await page.waitForTimeout(800);
+ok("Cooley's shows its title", (await page.locator("#paper .abcjs-title").innerText()).includes("Cooley"));
+ok("Cooley's shows guitar chord symbols (Em/D)",
+   await page.locator("#paper .abcjs-chord").count() >= 4);
+
 // Cooley's reel + harp tunes: each loads its own key/time/instrument and renders cleanly
 for (const [song, key, meter, instr] of [
-  ["cooley", "Edor", "4/4", "40"],
+  ["cooley", "Em", "4/4", "40"],
   ["greensleeves", "Am", "6/8", "46"],
   ["amazing", "G", "3/4", "46"],
 ]) {

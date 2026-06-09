@@ -17,6 +17,9 @@ const transposeValue = document.getElementById("transposeValue");
 // (correct key-signature spelling) for us via the visualTranspose render option.
 let transpose = 0;
 
+// Title shown above the staff. Examples can set their real name (e.g. Cooley's).
+let songTitle = "My Song";
+
 // If the abcjs library failed to load (e.g. the CDN is down), don't leave a
 // blank, silent page — tell the user plainly and stop.
 if (typeof ABCJS === "undefined") {
@@ -51,12 +54,13 @@ const SONGS = {
            "A,/2 C/2 E/2 A z/2 | B,/2 E/2 ^G/2 B z/2 |\n" +
            "e/2 ^d/2 e/2 ^d/2 e/2 B/2 | d/2 c/2 A z/2 z/2 |\n" +
            "A,/2 C/2 E/2 A z/2 | B,/2 E/2 c/2 B z/2 | A3 |",
-  // Cooley's Reel — the most famous Irish session tune. E Dorian, fast eighths.
+  // Cooley's Reel — the canonical abcjs version, with guitar chord symbols
+  // ("Em"/"D"), rolls (~), repeats, pickups, and the C# leading tone (^c).
   // [L:1/8] makes a plain letter an eighth note (the reel's natural pulse).
-  cooley:  "[L:1/8] EBBA B2 EB | B2 AB dBAG | FDAD BDAD | FDAD dAce |\n" +
-           "EBBA B2 EB | B2 AB defg | afge dBAG | FDAD BE E2 |\n" +
-           "eB B2 efge | eB B2 gedB | A2 FA DAFA | A2 FA defg |\n" +
-           "eB B2 efge | eB B2 defg | afge dBAG | FDAD BE E2 |",
+  cooley:  '[L:1/8] |:D2|"Em"EBBA B2 EB|~B2 AB dBAG|"D"FDAD BDAD|FDAD dAFD|\n' +
+           '"Em"EBBA B2 EB|B2 AB defg|"D"afe^c dBAF|"Em"DEFD E2:|\n' +
+           '|:gf|"Em"eB B2 efge|eB B2 gedB|"D"A2 FA DAFA|A2 FA defg|\n' +
+           '"Em"eB B2 eBgB|eB B2 defg|"D"afe^c dBAF|"Em"DEFD E2:|',
   // Greensleeves — the timeless Tudor melody, gorgeous on harp. A minor, 6/8.
   greensleeves: "[L:1/8] c3 d2 e | f2 e d2 B | G3 A2 B | c2 A A2 ^G |\n" +
            "c3 d2 e | f2 e d2 B | G2 A ^G2 E | A6 |",
@@ -92,7 +96,7 @@ function buildAbc() {
   const userNotes = notesBox.value.trim() || "z"; // z = a rest, so it's never empty
   return [
     "X:1",
-    "T:My Song",
+    `T:${songTitle}`,
     `M:${meterSel.value}`,
     "L:1/4",
     `Q:1/4=${tempo.value}`,
@@ -201,6 +205,7 @@ document.querySelectorAll("button.ex[data-song]").forEach(btn => {
     if (btn.dataset.key)    keySel.value = btn.dataset.key;
     if (btn.dataset.meter)  meterSel.value = btn.dataset.meter;
     if (btn.dataset.tempo)  { tempo.value = btn.dataset.tempo; tempoValue.textContent = btn.dataset.tempo; }
+    songTitle = btn.dataset.title || "My Song";        // show the piece's real name
     transpose = 0; transposeValue.textContent = "0";   // start each piece at concert pitch
     update();
   });
