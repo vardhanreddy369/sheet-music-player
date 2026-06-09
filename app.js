@@ -69,11 +69,12 @@ const SONGS = {
            "d2 B | d2 B | A3 | G2 E | D2 D | G2 B | A2 D | G3 |",
 };
 
-// The audio player. abcjs's SynthController caches the FIRST instrument it
-// loads and ignores later program changes, so we rebuild it whenever the
-// instrument actually changes (tracked by loadedProgram).
+// The audio player. abcjs's SynthController caches the tune+instrument it was
+// first given and won't reliably update once it's been played — so editing the
+// notes and pressing play again would replay the OLD music. We rebuild it
+// whenever the music changes (tracked by lastKey: the notes + transpose).
 let synthControl;
-let loadedProgram = null;
+let lastKey = null;
 
 // Highlights the note that is currently sounding, like a karaoke ball.
 const cursorControl = {
@@ -135,17 +136,19 @@ async function update() {
     return;
   }
 
-  // Rebuild the player when the instrument changes (abcjs caches the first
-  // one otherwise — which made every instrument sound like piano).
-  const program = instrument.value;
-  if (!synthControl || program !== loadedProgram) {
+  // Rebuild the player whenever the music changes — different notes, key, time,
+  // tempo, instrument (all in `abc`) or transpose. A fresh player guarantees
+  // that pressing play ALWAYS sounds what's currently written. When nothing
+  // changed (e.g. replaying the same song), we reuse it so play just works.
+  const key = abc + "@" + transpose;
+  if (!synthControl || key !== lastKey) {
     synthControl = new ABCJS.synth.SynthController();
     synthControl.load("#audio", cursorControl, {
       displayPlay: true,
       displayProgress: true,
       displayRestart: true,
     });
-    loadedProgram = program;
+    lastKey = key;
   }
 
   try {

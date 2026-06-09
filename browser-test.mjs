@@ -154,6 +154,26 @@ await page.selectOption("#key", "C"); await page.selectOption("#meter", "4/4");
 await page.locator('button[data-song="twinkle"]').click();
 await page.waitForTimeout(300);
 
+// 4e) EDIT-AND-REPLAY — hand-editing the notes must make playback change too
+// (the "I change the notes but the song stays the same" bug).
+await page.locator('button[data-song="twinkle"]').click();
+await page.waitForTimeout(700);
+const playBtnBefore = await page.locator("#audio .abcjs-midi-start").first().elementHandle();
+// hand-write a completely different melody
+await page.fill("#notes", "G, B, D G | B, D G2 |");
+await page.waitForTimeout(700);
+const rebuilt = playBtnBefore
+  ? await playBtnBefore.evaluate(el => !el.isConnected).catch(() => true) : true;
+ok("editing notes rebuilds the player (so the song actually changes)", rebuilt);
+ok("hand-written notes render on the staff", await page.locator("#paper svg .abcjs-note").count() > 0);
+// replaying the SAME music must NOT rebuild — so you can press play repeatedly
+const playBtnSame = await page.locator("#audio .abcjs-midi-start").first().elementHandle();
+await page.fill("#notes", "G, B, D G | B, D G2 |");   // identical content
+await page.waitForTimeout(700);
+const reused = playBtnSame
+  ? await playBtnSame.evaluate(el => el.isConnected).catch(() => false) : false;
+ok("replaying identical music keeps the player (replay works repeatedly)", reused);
+
 // 5a) INSTRUMENTS ARE DISTINCT — the "everything sounds like piano" bug.
 //     Select each instrument, press the real Play button, and confirm the
 //     correct soundfont folder loads (not piano for all).
