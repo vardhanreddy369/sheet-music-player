@@ -35,7 +35,7 @@ export function midiToAbc(midi) {
 
 // A list of per-frame MIDI values (or null for silence) -> merged notes.
 // Each result is { midi: number|null, dur: seconds }. Short blips become rests.
-export function framesToNotes(frameMidis, hopTime, { minNoteSec = 0.09 } = {}) {
+export function framesToNotes(frameMidis, hopTime, { minNoteSec = 0.09, minRestSec = 0.13 } = {}) {
   // 1) collapse runs of identical frames into segments
   const segs = [];
   let cur = null;
@@ -58,7 +58,20 @@ export function framesToNotes(frameMidis, hopTime, { minNoteSec = 0.09 } = {}) {
     else merged.push({ midi: s.midi, frames: s.frames });
   }
 
-  return merged.map(s => ({ midi: s.midi, dur: s.frames * hopTime }));
+  // 4) absorb tiny rests (the brief gap/glide between two notes) into the
+  //    previous note, so a 20ms transition doesn't become a full eighth-rest.
+  const minRestFrames = Math.max(1, Math.round(minRestSec / hopTime));
+  const out = [];
+  for (const s of merged) {
+    const last = out[out.length - 1];
+    if (s.midi === null && s.frames < minRestFrames && last && last.midi !== null) {
+      last.frames += s.frames; // glue the little gap onto the note before it
+    } else {
+      out.push({ midi: s.midi, frames: s.frames });
+    }
+  }
+
+  return out.map(s => ({ midi: s.midi, dur: s.frames * hopTime }));
 }
 
 // Length in eighth-notes -> ABC suffix, written against L:1/4 (a plain

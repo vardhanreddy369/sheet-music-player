@@ -39,11 +39,18 @@ eq("8 eighths -> 4 (whole)", lengthSuffix(8), "4");
 // --- framesToNotes: merging + dropping short blips ---
 // hopTime 0.05s, minNoteSec 0.09 -> need >=2 frames to count as a note
 const fm = [60, 60, 60, null, null, 62, 62, /*blip*/ 99, 64, 64];
-const notes = framesToNotes(fm, 0.05, { minNoteSec: 0.09 });
+// minRestSec:0 isolates merge/blip behaviour (no rest absorption)
+const notes = framesToNotes(fm, 0.05, { minNoteSec: 0.09, minRestSec: 0 });
 eq("frames merge into 5 segments", notes.length, 5);
 eq("first note is middle C", notes[0].midi, 60);
 eq("single-frame 99 blip became a rest", notes.some(n => n.midi === 99), false);
 eq("real 62 note survived", notes.some(n => n.midi === 62), true);
+
+// rest absorption: a tiny gap between two notes gets glued onto the note before it
+const gappy = [60, 60, 60, null, 64, 64, 64]; // 1-frame gap (0.05s) between two notes
+const absorbed = framesToNotes(gappy, 0.05, { minNoteSec: 0.09, minRestSec: 0.13 });
+eq("tiny rest absorbed -> 2 notes, no rest", absorbed.length, 2);
+eq("no rests remain", absorbed.some(n => n.midi === null), false);
 
 // --- notesToAbc: a C-major-ish scale at 120bpm, quarter notes (0.5s each) ---
 const scale = [4, 5, 7, 9].map(i => ({ midi: 60 + i, dur: 0.5 })); // E F G A, each a quarter
