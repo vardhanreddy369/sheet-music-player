@@ -3,7 +3,7 @@
 
 import {
   hzToMidi, midiToAbc, lengthSuffix, framesToNotes, notesToAbc,
-  smoothMidi, estimateBpm,
+  smoothMidi, estimateBpm, polyNotesToAbc, estimatePolyBpm,
 } from "./music-theory.js";
 
 let pass = 0, fail = 0;
@@ -76,6 +76,19 @@ eq("estimateBpm falls back to 120 on empty", estimateBpm([]), 120);
 
 // --- barline: a long note must not create an empty measure (| |) ---
 eq("long note -> no double barline", notesToAbc([{ midi: 60, dur: 4.0 }], { bpm: 120 }), "C8 |");
+
+// --- polyphonic: simultaneous notes become a chord ---
+eq("3 simultaneous notes -> a chord",
+   polyNotesToAbc([{start:0,dur:0.5,midi:60},{start:0,dur:0.5,midi:64},{start:0,dur:0.5,midi:67}], {bpm:120}),
+   "[CEG] |");
+eq("a sequence reads left to right",
+   polyNotesToAbc([{start:0,dur:0.5,midi:60},{start:0.5,dur:0.5,midi:64}], {bpm:120}),
+   "C E |");
+eq("near-simultaneous (within tolerance) = chord; later note separate",
+   polyNotesToAbc([{start:0,dur:0.5,midi:60},{start:0.04,dur:0.5,midi:67},{start:0.5,dur:0.5,midi:72}], {bpm:120}),
+   "[CG] c |");
+eq("estimatePolyBpm from onsets (~120)",
+   estimatePolyBpm([{start:0,midi:60},{start:0.5,midi:62},{start:1.0,midi:64}]), 120);
 
 console.log(`\n${fail === 0 ? "🎉 ALL PASS" : "⚠️  FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

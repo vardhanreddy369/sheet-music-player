@@ -171,6 +171,16 @@ body {
   font-family: "Fraunces", serif; font-style: italic; font-size: 0.98rem;
 }
 
+.poly-toggle {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin-top: 14px; padding: 11px 14px;
+  background: #130d08; border: 1px solid var(--ink-3); border-radius: 11px;
+  color: var(--muted); font-size: 0.88rem; cursor: pointer; line-height: 1.4;
+}
+.poly-toggle input { margin-top: 2px; width: 17px; height: 17px; accent-color: var(--gold); cursor: pointer; }
+.poly-toggle b { color: var(--gold-hi); font-weight: 600; }
+.poly-toggle:hover { border-color: var(--gold); }
+
 /* ---------- Compose controls ---------- */
 .controls { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 18px; }
 .field { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 190px; }

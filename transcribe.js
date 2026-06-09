@@ -5,10 +5,22 @@
 // ============================================================
 
 import { PitchDetector } from "https://esm.sh/pitchy@4";
-import { hzToMidi, smoothMidi, estimateBpm, framesToNotes, notesToAbc } from "./music-theory.js";
+import {
+  hzToMidi, smoothMidi, estimateBpm, framesToNotes, notesToAbc,
+  estimatePolyBpm, polyNotesToAbc,
+} from "./music-theory.js";
 
 const FRAME = 2048;   // samples analysed at once (~46ms at 44.1kHz)
 const HOP = 1024;     // step between windows (~23ms)
+
+// Polyphonic engine (Spotify's Basic Pitch, a TensorFlow.js model). Loaded
+// lazily the first time chord/harp mode is used, because it's a few MB.
+const BASIC_PITCH_MODEL = "https://cdn.jsdelivr.net/npm/@spotify/basic-pitch@1.0.1/model/model.json";
+let _basicPitch = null;
+async function loadBasicPitch() {
+  if (!_basicPitch) _basicPitch = await import("https://esm.sh/@spotify/basic-pitch@1.0.1");
+  return _basicPitch;
+}
 
 // --- page elements ---
 const recordBtn   = document.getElementById("recordBtn");
@@ -81,20 +93,63 @@ async function decode(blob) {
   return buffer;
 }
 
+// ---- Polyphonic (chord/harp) transcription via Basic Pitch ----
+// Basic Pitch wants mono audio at 22050 Hz, so resample first.
+async function resampleTo22050(audioBuffer) {
+  const length = Math.ceil(audioBuffer.duration * 22050);
+  const offline = new OfflineAudioContext(1, length, 22050);
+  const src = offline.createBufferSource();
+  src.buffer = audioBuffer;
+  src.connect(offline.destination);
+  src.start();
+  return offline.startRendering();
+}
+
+async function audioToAbcPoly(audioBuffer) {
+  const bp = await loadBasicPitch();
+  const buf = await resampleTo22050(audioBuffer);
+
+  const basicPitch = new bp.BasicPitch(BASIC_PITCH_MODEL);
+  const frames = [], onsets = [], contours = [];
+  await basicPitch.evaluateModel(
+    buf,
+    (f, o, c) => { frames.push(...f); onsets.push(...o); contours.push(...c); },
+    () => {},
+  );
+
+  // onsetThreshold, frameThreshold, minNoteLength(frames)
+  const raw = bp.noteFramesToTime(
+    bp.addPitchBendsToNoteEvents(contours, bp.outputToNotesPoly(frames, onsets, 0.5, 0.3, 5)));
+  const events = raw.map(n => ({
+    start: n.startTimeSeconds, dur: n.durationSeconds, midi: n.pitchMidi,
+  }));
+  const bpm = estimatePolyBpm(events);
+  syncTempo(bpm);
+  return polyNotesToAbc(events, { bpm });
+}
+
 // ---- Run a buffer through transcription and show the result ----
 async function transcribeAndShow(buffer) {
-  setStatus("Listening to your melody…");
+  const poly = document.getElementById("polyMode")?.checked;
+  setStatus(poly
+    ? "Listening for chords… (loading the AI model the first time — give it a moment)"
+    : "Listening to your melody…");
+
   let abc;
   try {
-    abc = await audioToAbc(buffer);
+    abc = poly ? await audioToAbcPoly(buffer) : await audioToAbc(buffer);
   } catch (err) {
     console.error(err);
-    setStatus("Something went wrong reading that audio. Try again?");
+    setStatus(poly
+      ? "The chord model couldn't load or run. Check your connection, or untick chord mode."
+      : "Something went wrong reading that audio. Try again?");
     return;
   }
 
   if (!abc) {
-    setStatus("I couldn't hear clear notes — try humming a bit louder and steadier.");
+    setStatus(poly
+      ? "I couldn't pick out clear notes from that recording."
+      : "I couldn't hear clear notes — try humming a bit louder and steadier.");
     return;
   }
 

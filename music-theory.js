@@ -149,3 +149,66 @@ export function notesToAbc(notes, { bpm = 120, beatsPerBar = 4 } = {}) {
   if (!body.endsWith("|")) body += " |";
   return body;
 }
+
+// ----- Polyphonic path (for the Basic Pitch / chord+harp mode) -----
+
+// Estimate tempo from the gaps between note ONSETS (not durations), since
+// polyphonic notes overlap. Median inter-onset interval ~ a quarter note.
+export function estimatePolyBpm(events, { min = 50, max = 180, fallback = 100 } = {}) {
+  const starts = [...new Set(events.map(e => e.start))].sort((a, b) => a - b);
+  if (starts.length < 2) return fallback;
+  const iois = [];
+  for (let i = 1; i < starts.length; i++) iois.push(starts[i] - starts[i - 1]);
+  iois.sort((a, b) => a - b);
+  const med = iois[Math.floor(iois.length / 2)];
+  if (!med || !isFinite(med)) return fallback;
+  let bpm = 60 / med;
+  while (bpm < min) bpm *= 2;
+  while (bpm > max) bpm /= 2;
+  return Math.round(bpm);
+}
+
+// Note events {start, dur, midi} (possibly overlapping) -> ABC. Notes that
+// start at nearly the same time become a chord [CEG]; the rest read left to
+// right. Durations come from the gap to the next onset, so chords/arpeggios
+// read as a clean rhythm.
+export function polyNotesToAbc(events, { bpm = 100, chordTolSec = 0.08, beatsPerBar = 4 } = {}) {
+  if (!events.length) return "";
+  const sorted = events.slice().sort((a, b) => a.start - b.start || a.midi - b.midi);
+
+  // group near-simultaneous onsets into chords
+  const groups = [];
+  for (const e of sorted) {
+    const last = groups[groups.length - 1];
+    if (last && e.start - last.start <= chordTolSec) {
+      if (!last.midis.includes(e.midi)) last.midis.push(e.midi);
+      last.dur = Math.max(last.dur, e.dur);
+    } else {
+      groups.push({ start: e.start, midis: [e.midi], dur: e.dur });
+    }
+  }
+
+  const eighthSec = 60 / bpm / 2;
+  const eighthsPerBar = beatsPerBar * 2;
+  const tokens = [];
+  let eighthsInBar = 0;
+  for (let i = 0; i < groups.length; i++) {
+    const g = groups[i];
+    const span = i < groups.length - 1 ? groups[i + 1].start - g.start : g.dur;
+    let e = Math.round(span / eighthSec);
+    if (e < 1) e = 1; if (e > 16) e = 16;
+    const suffix = lengthSuffix(e);
+    const midis = g.midis.slice().sort((a, b) => a - b);
+    tokens.push(midis.length === 1
+      ? midiToAbc(midis[0]) + suffix
+      : "[" + midis.map(midiToAbc).join("") + "]" + suffix);
+
+    eighthsInBar += e;
+    while (eighthsInBar >= eighthsPerBar) { eighthsInBar -= eighthsPerBar; tokens.push("|"); }
+  }
+
+  let body = tokens.join(" ").replace(/\s+/g, " ").trim();
+  body = body.replace(/\|(\s*\|)+/g, "|");
+  if (!body.endsWith("|")) body += " |";
+  return body;
+}
