@@ -4,27 +4,34 @@
 // proving audio -> notes actually works end to end.
 
 import { PitchDetector } from "pitchy";
-import { hzToMidi, framesToNotes, notesToAbc } from "./music-theory.js";
+import { hzToMidi, smoothMidi, estimateBpm, framesToNotes, notesToAbc } from "./music-theory.js";
 
 const SR = 44100, FRAME = 2048, HOP = 1024;
+let fail = 0;
 
-// Build sine-wave samples for a sequence of [freqHz, seconds] notes.
-function synth(notes) {
+// Build samples for a sequence of [freqHz, seconds] notes.
+// vibratoCents adds a realistic ± wobble to simulate a real singing voice;
+// harmonics add overtones so it's not a sterile pure sine.
+function synth(notes, { vibratoCents = 0, harmonics = 1 } = {}) {
   const total = notes.reduce((n, [, s]) => n + Math.round(s * SR), 0);
   const out = new Float32Array(total);
   let p = 0;
   for (const [hz, sec] of notes) {
     const len = Math.round(sec * SR);
     for (let i = 0; i < len; i++) {
-      // gentle fade per note so edges don't click
+      const t = i / SR;
       const fade = Math.min(i, len - i, 400) / 400;
-      out[p++] = 0.3 * fade * Math.sin(2 * Math.PI * hz * (i / SR));
+      // vibrato: 6Hz pitch wobble, depth in cents
+      const f = hz * Math.pow(2, (vibratoCents / 1200) * Math.sin(2 * Math.PI * 6 * t));
+      let v = 0;
+      for (let h = 1; h <= harmonics; h++) v += (1 / h) * Math.sin(2 * Math.PI * f * h * t);
+      out[p++] = 0.3 * fade * (v / harmonics);
     }
   }
   return out;
 }
 
-// Same logic as transcribe.js audioToAbc(), but on raw samples.
+// Mirrors transcribe.js audioToAbc() exactly.
 function samplesToAbc(samples) {
   const detector = PitchDetector.forFloat32Array(FRAME);
   const win = new Float32Array(FRAME);
@@ -36,21 +43,35 @@ function samplesToAbc(samples) {
     rms = Math.sqrt(rms / FRAME);
     const [hz, clarity] = detector.findPitch(win, SR);
     let midi = null;
-    if (clarity > 0.92 && rms > 0.012 && hz > 60 && hz < 2200) midi = hzToMidi(hz);
+    if (clarity > 0.80 && rms > 0.012 && hz > 65 && hz < 3500) midi = hzToMidi(hz);
     frameMidis.push(midi);
   }
-  const notes = framesToNotes(frameMidis, HOP / SR, { minNoteSec: 0.09 });
-  return notesToAbc(notes, { bpm: 120 });
+  const notes = framesToNotes(smoothMidi(frameMidis, 3), HOP / SR, { minNoteSec: 0.09 });
+  return notesToAbc(notes, { bpm: estimateBpm(notes) });
 }
 
-// A melody: middle C, E, G, high C — each a quarter note (0.5s @120bpm).
+function check(label, abc, wantTokens) {
+  const tokens = abc.replace(/\|/g, "").trim().split(/\s+/).filter(Boolean);
+  const ok = tokens.join(" ") === wantTokens;
+  console.log(`${ok ? "✅" : "❌"} ${label}: "${abc.trim()}"${ok ? "" : `  (wanted notes "${wantTokens}")`}`);
+  if (!ok) fail++;
+}
+
+// 1) Clean sine melody — must match EXACT notes incl. octaves (C E G c, not C, or c).
 const melody = [[261.63, 0.5], [329.63, 0.5], [392.0, 0.5], [523.25, 0.5]];
-const abc = samplesToAbc(synth(melody));
+check("clean melody, exact octaves", samplesToAbc(synth(melody)), "C E G c");
 
-console.log("Transcribed ABC:", JSON.stringify(abc));
+// 2) Same melody sung with realistic vibrato (±15 cents) + overtones — the
+//    real-voice case that used to vanish to empty output under clarity>0.92.
+//    Must still recover C E G c. (Extreme operatic ±40c vibrato still fragments
+//    and is documented as a known limit — we don't claim to handle that.)
+const sung = samplesToAbc(synth(melody, { vibratoCents: 15, harmonics: 3 }));
+check("realistic vibrato + harmonics still transcribes", sung, "C E G c");
 
-// The notes (ignoring exact rhythm) must read C E G c.
-const letters = abc.replace(/[0-9/|,'^_\s]/g, "");
-const ok = letters === "CEGc";
-console.log(ok ? "✅ Pitches detected correctly: C E G c" : `❌ Got letters "${letters}", wanted "CEGc"`);
-process.exit(ok ? 0 : 1);
+// 3) A higher whistle (E6 ~1319Hz) that the old 2200Hz... still in range; and a
+//    very high whistle E7 (~2637Hz) that the OLD code (cap 2200) would have dropped.
+const whistle = samplesToAbc(synth([[2637.0, 0.5]]));
+check("high whistle E7 (was dropped before)", whistle, "e''");
+
+console.log(`\n${fail === 0 ? "🎉 AUDIO PIPELINE OK" : "⚠️  " + fail + " failed"}`);
+process.exit(fail === 0 ? 0 : 1);

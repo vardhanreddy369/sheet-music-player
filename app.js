@@ -10,6 +10,15 @@ const tempo       = document.getElementById("tempo");
 const tempoValue  = document.getElementById("tempoValue");
 const warning     = document.getElementById("warning");
 
+// If the abcjs library failed to load (e.g. the CDN is down), don't leave a
+// blank, silent page — tell the user plainly and stop.
+if (typeof ABCJS === "undefined") {
+  warning.hidden = false;
+  warning.textContent = "Couldn't load the music engine — please check your internet connection and refresh.";
+  document.getElementById("paper").textContent = "♪ (music couldn't load)";
+  throw new Error("abcjs failed to load");
+}
+
 // Real instrument sounds come from this full General-MIDI soundfont
 // (covers all 128 instruments incl. harp, flute, choir...).
 const SOUND_FONT = "https://paulrosen.github.io/midi-js-soundfonts/FluidR3_GM/";
@@ -113,8 +122,15 @@ notesBox.addEventListener("input", () => {
   typingTimer = setTimeout(update, 350);
 });
 
-// Instrument change -> rebuild right away.
-instrument.addEventListener("change", update);
+// Instrument change -> show a loading hint (a new soundfont can be a few MB)
+// then rebuild.
+instrument.addEventListener("change", async () => {
+  const status = document.getElementById("status");
+  const name = instrument.options[instrument.selectedIndex].text;
+  if (status) status.textContent = `Loading ${name} sound…`;
+  await update();
+  if (status) status.textContent = `${name} ready — press ▶ to play.`;
+});
 
 // Tempo slider -> show the number and rebuild.
 tempo.addEventListener("input", () => {

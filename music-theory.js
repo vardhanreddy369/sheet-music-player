@@ -33,6 +33,37 @@ export function midiToAbc(midi) {
   return accidental + note;
 }
 
+// Median-smooth the per-frame MIDI values so natural vibrato (which wobbles
+// a singer ±1 semitone) settles onto one steady note instead of shattering
+// into sub-threshold blips. Nulls (silence) are preserved as-is.
+export function smoothMidi(frameMidis, radius = 2) {
+  const out = new Array(frameMidis.length);
+  for (let i = 0; i < frameMidis.length; i++) {
+    if (frameMidis[i] === null) { out[i] = null; continue; }
+    const vals = [];
+    for (let j = i - radius; j <= i + radius; j++) {
+      if (j >= 0 && j < frameMidis.length && frameMidis[j] !== null) vals.push(frameMidis[j]);
+    }
+    vals.sort((a, b) => a - b);
+    out[i] = vals[Math.floor(vals.length / 2)];
+  }
+  return out;
+}
+
+// Estimate the tempo from the notes themselves (assume the most common note
+// length is about a quarter note), so rhythm adapts to how fast the user hummed
+// instead of always assuming 120 bpm.
+export function estimateBpm(notes, { min = 50, max = 180, fallback = 120 } = {}) {
+  const durs = notes.filter(n => n.midi !== null).map(n => n.dur).sort((a, b) => a - b);
+  if (!durs.length) return fallback;
+  const median = durs[Math.floor(durs.length / 2)];
+  if (!median || !isFinite(median)) return fallback;
+  let bpm = 60 / median;            // median note ~ a quarter note
+  while (bpm < min) bpm *= 2;       // fold into a sensible range
+  while (bpm > max) bpm /= 2;
+  return Math.round(bpm);
+}
+
 // A list of per-frame MIDI values (or null for silence) -> merged notes.
 // Each result is { midi: number|null, dur: seconds }. Short blips become rests.
 export function framesToNotes(frameMidis, hopTime, { minNoteSec = 0.09, minRestSec = 0.13 } = {}) {
@@ -114,6 +145,7 @@ export function notesToAbc(notes, { bpm = 120, beatsPerBar = 4 } = {}) {
   }
 
   let body = tokens.join(" ").replace(/\s+/g, " ").trim();
+  body = body.replace(/\|(\s*\|)+/g, "|");   // collapse any empty measures (| |)
   if (!body.endsWith("|")) body += " |";
   return body;
 }

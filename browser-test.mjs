@@ -79,6 +79,16 @@ const transcribed = await page.locator("#notes").inputValue();
 const letters = transcribed.replace(/[0-9/|,'^_\s]/g, "");
 ok(`uploaded audio transcribed to notes (got "${transcribed.trim()}")`, letters === "CEGc");
 
+// 5b) accessibility + perf regressions
+ok("status is an aria-live region",
+   (await page.locator("#status").getAttribute("aria-live")) === "polite");
+ok("abcjs script is deferred (non-blocking)",
+   await page.locator('script[src*="abcjs-basic"][defer]').count() > 0);
+ok("file input is keyboard-focusable (not [hidden])",
+   (await page.locator("#uploadInput").getAttribute("hidden")) === null);
+ok("record button exposes pressed state",
+   (await page.locator("#recordBtn").getAttribute("aria-pressed")) !== null);
+
 // 6) no console / page errors the whole time
 if (consoleErrors.length) console.log("\n   console errors:\n   - " + consoleErrors.join("\n   - "));
 ok("no JavaScript errors", consoleErrors.length === 0);

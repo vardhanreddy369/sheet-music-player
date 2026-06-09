@@ -13,8 +13,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/abcjs@6.4.3/abcjs-audio.css" />
   <link rel="stylesheet" href="style.css" />
 
-  <!-- abcjs: draws the sheet music AND plays it -->
-  <script src="https://cdn.jsdelivr.net/npm/abcjs@6.4.3/dist/abcjs-basic-min.js"></script>
+  <!-- abcjs: draws the sheet music AND plays it (deferred so it doesn't block first paint) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/abcjs@6.4.3/dist/abcjs-basic-min.js"></script>
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
@@ -32,17 +32,17 @@
     <section class="panel capture">
       <div class="panel-tag">I. Sing it in</div>
       <div class="capture-row">
-        <button id="recordBtn" class="record" type="button" aria-label="Record">
+        <button id="recordBtn" class="record" type="button" aria-pressed="false">
           <span class="rec-dot"></span>
           <span class="rec-label">Record</span>
         </button>
         <canvas id="wave" class="wave" width="640" height="72" aria-hidden="true"></canvas>
         <label class="upload">
-          <input type="file" id="uploadInput" accept="audio/*" hidden />
+          <input type="file" id="uploadInput" accept="audio/*" class="visually-hidden" />
           <span>⤓ Upload audio</span>
         </label>
       </div>
-      <p id="status" class="status">Hum, whistle, or play a melody — I'll write the notes for you.</p>
+      <p id="status" class="status" role="status" aria-live="polite">Hum, whistle, or play a melody — I'll write the notes for you.</p>
     </section>
 
     <!-- ░░ COMPOSE: edit notation + instrument ░░ -->
@@ -75,14 +75,14 @@
       </div>
 
       <textarea id="notes" spellcheck="false" rows="3">C C G G | A A G2 | F F E E | D D C2 |</textarea>
-      <p id="warning" class="warning" hidden></p>
+      <p id="warning" class="warning" role="status" aria-live="polite" hidden></p>
 
       <div class="examples">
         <span class="examples-label">Or try:</span>
         <button class="ex" data-song="twinkle" type="button">Twinkle Twinkle</button>
         <button class="ex" data-song="scale" type="button">C Major Scale</button>
         <button class="ex" data-song="ode" type="button">Ode to Joy</button>
-        <button class="ex harp-ex" data-song="harp" data-instrument="46" type="button">🪕 Harp Lullaby</button>
+        <button class="ex harp-ex" data-song="harp" data-instrument="46" type="button">♪ Harp Lullaby</button>
         <button id="clear" class="ex clear" type="button">Clear</button>
       </div>
     </section>
@@ -111,7 +111,8 @@
     <span>Made with care · powered by <a href="https://abcjs.net" target="_blank" rel="noopener">abcjs</a> &amp; <a href="https://github.com/ianprime0509/pitchy" target="_blank" rel="noopener">pitchy</a></span>
   </footer>
 
-  <script src="app.js"></script>
+  <!-- deferred so it runs AFTER the deferred abcjs bundle, with the DOM ready -->
+  <script defer src="app.js"></script>
   <script type="module" src="transcribe.js"></script>
 </body>
 </html>

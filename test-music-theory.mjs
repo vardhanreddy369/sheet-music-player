@@ -3,6 +3,7 @@
 
 import {
   hzToMidi, midiToAbc, lengthSuffix, framesToNotes, notesToAbc,
+  smoothMidi, estimateBpm,
 } from "./music-theory.js";
 
 let pass = 0, fail = 0;
@@ -59,6 +60,22 @@ eq("scale -> ABC quarters with bar line", notesToAbc(scale, { bpm: 120 }), "E F 
 // trims leading/trailing rests
 const padded = [{ midi: null, dur: 1 }, { midi: 60, dur: 0.5 }, { midi: null, dur: 1 }];
 eq("leading/trailing rests trimmed", notesToAbc(padded, { bpm: 120 }), "C |");
+
+// --- smoothMidi: a single-frame octave jump in a held note is removed ---
+eq("smoothMidi flattens a 1-frame jump", smoothMidi([60, 60, 72, 60, 60], 2), [60, 60, 60, 60, 60]);
+eq("smoothMidi keeps silence (null) as null", smoothMidi([60, null, 60], 1)[1], null);
+// a held note with occasional wobble settles to the dominant pitch
+eq("smoothMidi settles occasional wobble", smoothMidi([60, 61, 60, 60, 61, 60, 60], 2), [60, 60, 60, 60, 60, 60, 60]);
+
+// --- estimateBpm: notes ~0.5s long imply ~120bpm (quarter = 0.5s) ---
+eq("estimateBpm ~120 for half-second notes",
+   estimateBpm([{ midi: 60, dur: 0.5 }, { midi: 62, dur: 0.5 }, { midi: 64, dur: 0.5 }]), 120);
+eq("estimateBpm ~60 for one-second notes",
+   estimateBpm([{ midi: 60, dur: 1.0 }, { midi: 62, dur: 1.0 }]), 60);
+eq("estimateBpm falls back to 120 on empty", estimateBpm([]), 120);
+
+// --- barline: a long note must not create an empty measure (| |) ---
+eq("long note -> no double barline", notesToAbc([{ midi: 60, dur: 4.0 }], { bpm: 120 }), "C8 |");
 
 console.log(`\n${fail === 0 ? "🎉 ALL PASS" : "⚠️  FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

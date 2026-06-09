@@ -5,7 +5,7 @@
 // ============================================================
 
 import { PitchDetector } from "https://esm.sh/pitchy@4";
-import { hzToMidi, framesToNotes, notesToAbc } from "./music-theory.js";
+import { hzToMidi, smoothMidi, estimateBpm, framesToNotes, notesToAbc } from "./music-theory.js";
 
 const FRAME = 2048;   // samples analysed at once (~46ms at 44.1kHz)
 const HOP = 1024;     // step between windows (~23ms)
@@ -40,17 +40,36 @@ async function audioToAbc(audioBuffer) {
 
     const [hz, clarity] = detector.findPitch(window, sr);
 
-    // only trust confident, in-range, loud-enough pitches
+    // only trust confident, in-range, loud-enough pitches.
+    // clarity 0.80 keeps real (slightly wavering) voices; range covers low
+    // humming (~65Hz) up through high whistling (~3.5kHz).
     let midi = null;
-    if (clarity > 0.92 && rms > 0.012 && hz > 60 && hz < 2200) {
+    if (clarity > 0.80 && rms > 0.012 && hz > 65 && hz < 3500) {
       midi = hzToMidi(hz);
     }
     frameMidis.push(midi);
   }
 
+  // smooth out vibrato wobble so a held note stays one note, then segment
+  const smoothed = smoothMidi(frameMidis, 3);
   const hopTime = HOP / sr;
-  const notes = framesToNotes(frameMidis, hopTime, { minNoteSec: 0.09 });
-  return notesToAbc(notes, { bpm: 120 });
+  const notes = framesToNotes(smoothed, hopTime, { minNoteSec: 0.09 });
+
+  // adapt the rhythm grid to how fast the melody actually was
+  const bpm = estimateBpm(notes);
+  syncTempo(bpm);
+  return notesToAbc(notes, { bpm });
+}
+
+// Point the tempo slider (and playback) at the detected tempo so the written
+// rhythm and the playback speed agree.
+function syncTempo(bpm) {
+  const tempo = document.getElementById("tempo");
+  const tempoValue = document.getElementById("tempoValue");
+  if (!tempo) return;
+  const clamped = Math.max(Number(tempo.min), Math.min(Number(tempo.max), bpm));
+  tempo.value = clamped;
+  if (tempoValue) tempoValue.textContent = clamped;
 }
 
 // ---- Decode any audio blob/file into samples ----
@@ -110,6 +129,10 @@ function drawWave() {
 
 // ---- Recording controls ----
 async function startRecording() {
+  if (typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+    setStatus("This browser can't record audio. Try the Upload button instead, or use Chrome/Safari.");
+    return;
+  }
   try {
     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch {
@@ -128,14 +151,20 @@ async function startRecording() {
   mediaRecorder = new MediaRecorder(mediaStream);
   mediaRecorder.ondataavailable = e => chunks.push(e.data);
   mediaRecorder.onstop = async () => {
-    const blob = new Blob(chunks, { type: chunks[0]?.type || "audio/webm" });
-    const buffer = await decode(blob);
-    await transcribeAndShow(buffer);
+    try {
+      const blob = new Blob(chunks, { type: chunks[0]?.type || "audio/webm" });
+      const buffer = await decode(blob);
+      await transcribeAndShow(buffer);
+    } catch (err) {
+      console.error(err);
+      setStatus("I couldn't read that recording. Try again, or use the Upload button.");
+    }
   };
   mediaRecorder.start();
 
   recording = true;
   recordBtn.classList.add("recording");
+  recordBtn.setAttribute("aria-pressed", "true");
   recordBtn.querySelector(".rec-label").textContent = "Stop";
   setStatus("Recording… hum or whistle a melody, then press Stop.");
 }
@@ -143,6 +172,7 @@ async function startRecording() {
 function stopRecording() {
   recording = false;
   recordBtn.classList.remove("recording");
+  recordBtn.setAttribute("aria-pressed", "false");
   recordBtn.querySelector(".rec-label").textContent = "Record";
   cancelAnimationFrame(rafId);
   const ctx = canvas.getContext("2d");
