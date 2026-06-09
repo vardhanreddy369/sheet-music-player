@@ -79,6 +79,25 @@ const transcribed = await page.locator("#notes").inputValue();
 const letters = transcribed.replace(/[0-9/|,'^_\s]/g, "");
 ok(`uploaded audio transcribed to notes (got "${transcribed.trim()}")`, letters === "CEGc");
 
+// 5a) INSTRUMENTS ARE DISTINCT — the "everything sounds like piano" bug.
+//     Select each instrument, press the real Play button, and confirm the
+//     correct soundfont folder loads (not piano for all).
+async function instrumentFolder(value) {
+  const seen = [];
+  const handler = r => { const m = r.url().match(/FluidR3_GM\/([^/]+)\//); if (m) seen.push(m[1]); };
+  page.on("request", handler);
+  await page.selectOption("#instrument", value);
+  await page.waitForTimeout(1000);
+  await page.locator("#audio .abcjs-midi-start").first().click().catch(() => {});
+  await page.waitForTimeout(2800);
+  page.off("request", handler);
+  return [...new Set(seen)];
+}
+const harpFont  = await instrumentFolder("46");
+const fluteFont = await instrumentFolder("73");
+ok(`harp loads its own soundfont (${harpFont})`, harpFont.includes("orchestral_harp-mp3"));
+ok(`flute loads a different soundfont (${fluteFont})`, fluteFont.includes("flute-mp3"));
+
 // 5b) accessibility + perf regressions
 ok("status is an aria-live region",
    (await page.locator("#status").getAttribute("aria-live")) === "polite");
