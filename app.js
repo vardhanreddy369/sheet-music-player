@@ -51,6 +51,18 @@ const SONGS = {
            "A,/2 C/2 E/2 A z/2 | B,/2 E/2 ^G/2 B z/2 |\n" +
            "e/2 ^d/2 e/2 ^d/2 e/2 B/2 | d/2 c/2 A z/2 z/2 |\n" +
            "A,/2 C/2 E/2 A z/2 | B,/2 E/2 c/2 B z/2 | A3 |",
+  // Cooley's Reel — the most famous Irish session tune. E Dorian, fast eighths.
+  // [L:1/8] makes a plain letter an eighth note (the reel's natural pulse).
+  cooley:  "[L:1/8] EBBA B2 EB | B2 AB dBAG | FDAD BDAD | FDAD dAce |\n" +
+           "EBBA B2 EB | B2 AB defg | afge dBAG | FDAD BE E2 |\n" +
+           "eB B2 efge | eB B2 gedB | A2 FA DAFA | A2 FA defg |\n" +
+           "eB B2 efge | eB B2 defg | afge dBAG | FDAD BE E2 |",
+  // Greensleeves — the timeless Tudor melody, gorgeous on harp. A minor, 6/8.
+  greensleeves: "[L:1/8] c3 d2 e | f2 e d2 B | G3 A2 B | c2 A A2 ^G |\n" +
+           "c3 d2 e | f2 e d2 B | G2 A ^G2 E | A6 |",
+  // Amazing Grace — the most-loved hymn, soft and open on harp. G major, 3/4.
+  amazing: "D | G2 B | G2 B | A3 | G2 E | D2 D | G2 B | G2 B | d3 |\n" +
+           "d2 B | d2 B | A3 | G2 E | D2 D | G2 B | A2 D | G3 |",
 };
 
 // The audio player. abcjs's SynthController caches the FIRST instrument it

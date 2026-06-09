@@ -126,6 +126,22 @@ ok("Für Elise sets time to 3/4", (await page.locator("#meter").inputValue()) ==
 ok("Für Elise sets a brisk tempo (140)", (await page.locator("#tempo").inputValue()) === "140");
 ok("Für Elise notation is valid (no warning)", await page.locator("#warning").isHidden());
 ok("Für Elise renders many notes", await page.locator("#paper svg .abcjs-note").count() >= 20);
+// Cooley's reel + harp tunes: each loads its own key/time/instrument and renders cleanly
+for (const [song, key, meter, instr] of [
+  ["cooley", "Edor", "4/4", "40"],
+  ["greensleeves", "Am", "6/8", "46"],
+  ["amazing", "G", "3/4", "46"],
+]) {
+  await page.locator(`button[data-song="${song}"]`).click();
+  await page.waitForTimeout(700);
+  const okSetup =
+    (await page.locator("#key").inputValue()) === key &&
+    (await page.locator("#meter").inputValue()) === meter &&
+    (await page.locator("#instrument").inputValue()) === instr &&
+    (await page.locator("#warning").isHidden());
+  ok(`${song} loads correctly (${key}, ${meter}, instr ${instr}, no warning)`, okSetup);
+}
+
 // reset
 await page.selectOption("#key", "C"); await page.selectOption("#meter", "4/4");
 await page.locator('button[data-song="twinkle"]').click();
